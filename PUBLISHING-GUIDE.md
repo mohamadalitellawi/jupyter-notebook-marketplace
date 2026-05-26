@@ -306,49 +306,211 @@ marketplace name). They run them and they're done.
 
 ---
 
-## Part 6 — Publishing updates later
+## Part 6 — Installing or updating on your own machine (Claude CLI)
 
-When you change the plugin (fix a bug, add a feature):
+This is for getting the plugin from GitHub onto a machine, and later pulling a
+newer version. Everything here runs in your normal terminal — you do not need to
+be inside a Claude Code session.
 
-1. **Bump the version** in `plugins/jupyter-notebook/.claude-plugin/plugin.json`,
-   e.g. `1.0.0` → `1.0.1`. This is what tells Claude Code an update exists.
-2. Save your changes to git and upload them:
+### 6.1 Fresh install (a machine that has never had it)
 
 ```bash
+# 1. Register your published marketplace (this clones the repo behind the scenes):
+claude plugin marketplace add YOUR-USERNAME/jupyter-notebook-marketplace
+
+# 2. Install the plugin from that marketplace:
+claude plugin install jupyter-notebook@my-skills
+
+# 3. Install the Python libraries the skill needs:
+pip install nbformat markdown
+
+# 4. Confirm it's installed (shows version, source marketplace, enabled status):
+claude plugin list
+```
+
+By default the plugin installs for your whole user account. To limit it to the
+current project instead, add a scope:
+
+```bash
+claude plugin install jupyter-notebook@my-skills --scope project
+```
+
+### 6.2 Update to a newer version
+
+Installing does **not** automatically pull new commits. You first refresh the
+marketplace's local copy from GitHub, then update the plugin:
+
+```bash
+# 1. Pull the latest marketplace contents from GitHub:
+claude plugin marketplace update my-skills
+
+# 2. Update the plugin to the newest version:
+claude plugin update jupyter-notebook
+
+# 3. Check the version actually changed:
+claude plugin list
+```
+
+If the update doesn't seem to take effect, fully quit and restart Claude Code so
+it reloads its skill list.
+
+---
+
+## Part 7 — Publishing the next version (after you edit the skill)
+
+When you improve the skill later, follow these steps in order. Step 7.2 (the
+version bump) is the one people forget — and without it, your users never
+receive the update.
+
+### 7.1 Make and test your changes
+
+Edit the skill files under
+`plugins/jupyter-notebook/skills/jupyter-notebook/`. Then run the test suite
+from inside that folder to prove nothing broke:
+
+```bash
+cd plugins/jupyter-notebook/skills/jupyter-notebook
+pytest
+cd -        # returns you to the marketplace root
+```
+
+### 7.2 Bump the version number
+
+Open `plugins/jupyter-notebook/.claude-plugin/plugin.json` and raise `version`.
+The convention (called *semantic versioning*) is `MAJOR.MINOR.PATCH`:
+
+- **PATCH** — `1.0.0` → `1.0.1` — a bug fix, no behaviour change.
+- **MINOR** — `1.0.0` → `1.1.0` — a new feature, still backwards-compatible.
+- **MAJOR** — `1.0.0` → `2.0.0` — a breaking change.
+
+Set the number in `plugin.json` only — not also in `marketplace.json`. If both
+carry a version, `plugin.json` silently wins, which is confusing later.
+
+### 7.3 Validate, commit, and push
+
+```bash
+claude plugin validate .                 # re-check the manifests are still valid
 git add .
-git commit -m "Describe what you changed"
+git commit -m "v1.0.1: describe what you changed"
 git push
 ```
 
-3. Your users refresh and reinstall:
+Optionally tag the release so the version is easy to find on GitHub:
 
+```bash
+git tag v1.0.1
+git push --tags
 ```
-/plugin marketplace update my-skills
-/plugin install jupyter-notebook@my-skills
+
+### 7.4 Tell users how to upgrade
+
+They run the update flow from Part 6.2:
+
+```bash
+claude plugin marketplace update my-skills
+claude plugin update jupyter-notebook
 ```
 
 ---
 
-## Quick reference (the whole thing in 10 commands)
+## Part 8 — Removing the plugin or the marketplace
+
+There are two different kinds of "remove". Decide which you mean before running
+anything.
+
+### 8.1 Remove it from your own machine (stop using it locally)
 
 ```bash
-# One-time identity setup
-git config --global user.name "Your Name"
+# Uninstall the plugin (the plugin@marketplace form avoids ambiguity):
+claude plugin uninstall jupyter-notebook@my-skills
+
+# Optionally also unregister the whole marketplace:
+claude plugin marketplace remove my-skills
+```
+
+To also clean up any dependencies the plugin brought in, newer Claude Code
+versions accept a prune flag:
+
+```bash
+claude plugin uninstall jupyter-notebook --prune     # requires Claude Code v2.1.121+
+```
+
+Known quirks, if a removal doesn't fully "stick":
+
+- Removing a marketplace through the interactive `/plugin` menu has been
+  reported to leave an entry in `~/.claude/settings.json` that quietly reloads
+  it on the next start. Using the **CLI** command
+  `claude plugin marketplace remove` is the reliable path.
+- Cached files under `~/.claude/plugins/cache/` can linger after removal. If a
+  stale copy keeps reappearing, delete that marketplace's cache folder by hand:
+  `rm -rf ~/.claude/plugins/cache/my-skills`.
+- After removing, fully restart Claude Code so the skill list refreshes.
+
+### 8.2 Remove it from your published marketplace (so others can no longer install it)
+
+This is an edit-and-push job, not a single CLI command.
+
+**To remove just this plugin while keeping the marketplace:** delete its entry
+from the `plugins` array in `.claude-plugin/marketplace.json` (and optionally
+delete the `plugins/jupyter-notebook/` folder), then commit and push:
+
+```bash
+git add .
+git commit -m "Remove jupyter-notebook plugin from the marketplace"
+git push
+```
+
+**To take down the entire marketplace:** delete the GitHub repository (on
+github.com: open the repo → **Settings** → scroll to the **Danger Zone** →
+**Delete this repository**), or switch it to private.
+
+**Important:** removing it from GitHub stops *new* installs and *future*
+updates, but it does **not** uninstall it from people who already have it. Their
+copy keeps working until they remove it themselves (Part 8.1). If you need them
+to stop, send them the uninstall commands.
+
+---
+
+## Quick reference
+
+**Publish for the first time** (run from inside the marketplace folder):
+
+```bash
+git config --global user.name "Your Name"          # one-time identity setup
 git config --global user.email "you@example.com"
 
-# From inside the marketplace folder:
 cd jupyter-notebook-marketplace
-claude plugin validate .                                  # check it's valid
+claude plugin validate .                            # check it's valid
 git init
 git add .
 git commit -m "Initial commit: jupyter-notebook plugin"
 git branch -M main
-gh auth login                                             # log in to GitHub
+gh auth login                                       # log in to GitHub
 gh repo create jupyter-notebook-marketplace --public --source=. --remote=origin --push
+```
 
-# Anyone installs with:
-#   /plugin marketplace add YOUR-USERNAME/jupyter-notebook-marketplace
-#   /plugin install jupyter-notebook@my-skills
+**Everyday operations:**
+
+```bash
+# Install on a machine
+claude plugin marketplace add YOUR-USERNAME/jupyter-notebook-marketplace
+claude plugin install jupyter-notebook@my-skills
+pip install nbformat markdown
+
+# Update to a newer published version
+claude plugin marketplace update my-skills
+claude plugin update jupyter-notebook
+
+# Publish a new version (after editing + bumping version in plugin.json)
+claude plugin validate .
+git add . && git commit -m "v1.0.1: ..." && git push
+
+# Remove from your machine
+claude plugin uninstall jupyter-notebook@my-skills
+claude plugin marketplace remove my-skills
+
+# Inspect what's installed
+claude plugin list
 ```
 
 ---
@@ -377,10 +539,22 @@ shorthand (which clones the whole repo), as shown in Part 5.
 Confirm the Python dependencies are installed in the environment Claude Code
 runs in: `pip install nbformat markdown`.
 
+**`claude plugin update` didn't pull my new version.**
+Run `claude plugin marketplace update my-skills` first (that refreshes the copy
+from GitHub), then `claude plugin update jupyter-notebook`, then restart Claude
+Code. Also double-check you bumped `version` in `plugin.json` and pushed it.
+
+**I removed the plugin/marketplace but it keeps coming back.**
+Remove it from the **terminal** with `claude plugin marketplace remove my-skills`
+rather than the interactive menu, then restart Claude Code. If it still returns,
+a leftover entry in `~/.claude/settings.json` or a cached folder at
+`~/.claude/plugins/cache/my-skills` may need deleting by hand.
+
 ---
 
 ## Official documentation
 
 - Create and distribute a marketplace: https://code.claude.com/docs/en/plugin-marketplaces
 - Creating plugins: https://code.claude.com/docs/en/plugins
+- Plugin & CLI reference (install / update / uninstall / remove): https://code.claude.com/docs/en/plugins-reference
 - GitHub: getting started: https://docs.github.com/en/get-started
