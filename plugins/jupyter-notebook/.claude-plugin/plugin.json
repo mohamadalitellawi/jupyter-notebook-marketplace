@@ -1,0 +1,11 @@
+{
+  "name": "jupyter-notebook",
+  "description": "Read, inspect, edit, create, and convert Jupyter notebook (.ipynb) files via the nbtools Python package. Does not execute notebooks.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Mohamad Ali alTellawi"
+  },
+  "license": "MIT",
+  "keywords": ["jupyter", "notebook", "ipynb", "nbformat", "conversion"],
+  "category": "development"
+}

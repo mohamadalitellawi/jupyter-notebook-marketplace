@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "mat-skills",
+  "description": "Personal catalog of Claude Code skills.",
+  "owner": {
+    "name": "Mohamad Ali alTellawi"
+  },
+  "plugins": [
+    {
+      "name": "jupyter-notebook",
+      "source": "./plugins/jupyter-notebook",
+      "description": "Read, inspect, edit, create, and convert Jupyter notebooks. Built on nbformat; does not execute notebooks.",
+      "category": "development"
+    }
+  ]
+}
