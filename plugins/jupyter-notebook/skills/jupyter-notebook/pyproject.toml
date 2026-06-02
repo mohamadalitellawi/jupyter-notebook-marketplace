@@ -1,6 +1,6 @@
 [project]
 name = "nbtools"
-version = "0.2.0"
+version = "1.1.2"
 description = "Read, edit, create, and convert Jupyter notebooks, built on nbformat."
 requires-python = ">=3.12"
 dependencies = [

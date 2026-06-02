@@ -6,6 +6,13 @@ against the Jupyter schema. The public API is re-exported here for convenience.
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version as _metadata_version
+
+try:
+    __version__ = _metadata_version("nbtools")
+except PackageNotFoundError:
+    __version__ = "unknown"
+
 from nbtools.convert import (
     from_markdown,
     from_python,

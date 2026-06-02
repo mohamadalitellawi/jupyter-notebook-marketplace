@@ -165,8 +165,8 @@ optional.
 
 ### 2.3 A note on `version`
 
-`plugin.json` currently has `"version": "1.1.1"`. Remember this rule for later:
-**every time you publish a change, increase this number** (e.g. to `1.1.2` for a
+`plugin.json` currently has `"version": "1.1.2"`. Remember this rule for later:
+**every time you publish a change, increase this number** (e.g. to `1.1.3` for a
 fix or `1.2.0` for a new feature). Claude Code only sends updates to users when
 this number changes.
 
