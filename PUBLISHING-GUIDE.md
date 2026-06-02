@@ -165,8 +165,8 @@ optional.
 
 ### 2.3 A note on `version`
 
-`plugin.json` currently has `"version": "1.1.0"`. Remember this rule for later:
-**every time you publish a change, increase this number** (e.g. to `1.1.1` for a
+`plugin.json` currently has `"version": "1.1.1"`. Remember this rule for later:
+**every time you publish a change, increase this number** (e.g. to `1.1.2` for a
 fix or `1.2.0` for a new feature). Claude Code only sends updates to users when
 this number changes.
 
@@ -350,8 +350,9 @@ marketplace's local copy from GitHub, then update the plugin:
 # 1. Pull the latest marketplace contents from GitHub:
 claude plugin marketplace update my-skills
 
-# 2. Update the plugin to the newest version:
-claude plugin update jupyter-notebook
+# 2. Update the plugin to the newest version (use the plugin@marketplace form;
+#    the bare name can report "Plugin not found"):
+claude plugin update jupyter-notebook@my-skills
 
 # 3. Check the version actually changed:
 claude plugin list
@@ -414,7 +415,7 @@ They run the update flow from Part 6.2:
 
 ```bash
 claude plugin marketplace update my-skills
-claude plugin update jupyter-notebook
+claude plugin update jupyter-notebook@my-skills
 ```
 
 ---
@@ -505,7 +506,7 @@ pip install nbformat markdown
 
 # Update to a newer published version
 claude plugin marketplace update my-skills
-claude plugin update jupyter-notebook
+claude plugin update jupyter-notebook@my-skills
 
 # Publish a new version (after editing + bumping version in plugin.json)
 claude plugin validate .
@@ -547,8 +548,10 @@ runs in: `pip install nbformat markdown`.
 
 **`claude plugin update` didn't pull my new version.**
 Run `claude plugin marketplace update my-skills` first (that refreshes the copy
-from GitHub), then `claude plugin update jupyter-notebook`, then restart Claude
-Code. Also double-check you bumped `version` in `plugin.json` and pushed it.
+from GitHub), then `claude plugin update jupyter-notebook@my-skills`, then
+restart Claude Code. Use the `plugin@marketplace` form — the bare
+`claude plugin update jupyter-notebook` can report "Plugin not found". Also
+double-check you bumped `version` in `plugin.json` and pushed it.
 
 **I removed the plugin/marketplace but it keeps coming back.**
 Remove it from the **terminal** with `claude plugin marketplace remove my-skills`
