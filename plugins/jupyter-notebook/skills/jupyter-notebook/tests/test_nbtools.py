@@ -6,6 +6,7 @@ Run with: pytest
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 
 import nbformat
@@ -14,6 +15,8 @@ import pytest
 from nbtools import (
     NotebookBuilder,
     add_cell,
+    clear_outputs,
+    extract_errors,
     extract_source,
     extract_text_outputs,
     from_markdown,
@@ -23,6 +26,7 @@ from nbtools import (
     new_notebook,
     read_notebook,
     remove_cell,
+    set_cell_metadata,
     to_html,
     to_markdown,
     to_python,
@@ -30,6 +34,20 @@ from nbtools import (
     write_notebook,
 )
 from nbtools.types import CellType
+
+
+def _code_cell_with_error():
+    """A code cell carrying a synthetic ``error`` output."""
+    cell = nbformat.v4.new_code_cell("raise ValueError('boom')")
+    cell.outputs = [
+        nbformat.v4.new_output(
+            "error",
+            ename="ValueError",
+            evalue="boom",
+            traceback=["Traceback (most recent call last):", "ValueError: boom"],
+        )
+    ]
+    return cell
 
 
 @pytest.fixture
@@ -68,6 +86,15 @@ def test_read_missing_file_raises(tmp_path: Path):
         read_notebook(tmp_path / "absent.ipynb")
 
 
+def test_round_trips_with_string_paths(sample_notebook, tmp_path: Path):
+    # The natural thing in a quick script is to pass a str, not a Path.
+    path = str(tmp_path / "nb.ipynb")
+    written = write_notebook(sample_notebook, path)
+    assert isinstance(written, Path)
+    reloaded = read_notebook(path)
+    assert extract_source(reloaded) == extract_source(sample_notebook)
+
+
 # --- inspect ----------------------------------------------------------------
 
 
@@ -98,6 +125,31 @@ def test_extract_text_outputs_reads_stream_and_result(tmp_path: Path):
     assert extract_text_outputs(nb) == ["hi\n", "42"]
 
 
+def test_extract_errors_finds_error_outputs():
+    nb = new_notebook()
+    nb.cells.append(nbformat.v4.new_code_cell("x = 1"))  # no error
+    nb.cells.append(_code_cell_with_error())
+    errors = extract_errors(nb)
+    assert len(errors) == 1
+    assert errors[0].index == 1
+    assert errors[0].ename == "ValueError"
+    assert errors[0].evalue == "boom"
+    assert "ValueError: boom" in errors[0].traceback
+
+
+def test_extract_errors_empty_when_clean(sample_notebook):
+    assert extract_errors(sample_notebook) == []
+
+
+def test_extract_text_outputs_excludes_errors_by_default():
+    nb = new_notebook()
+    nb.cells.append(_code_cell_with_error())
+    assert extract_text_outputs(nb) == []
+    included = extract_text_outputs(nb, include_errors=True)
+    assert len(included) == 1
+    assert "ValueError: boom" in included[0]
+
+
 # --- edit: purity and correctness ------------------------------------------
 
 
@@ -125,11 +177,72 @@ def test_remove_and_move(sample_notebook):
     assert moved.cells[2].source == "# Demo"
 
 
+def test_clear_outputs_strips_outputs_without_mutating(sample_notebook):
+    # Give a code cell some outputs and an execution_count to clear.
+    nb = copy.deepcopy(sample_notebook)
+    nb.cells[1].outputs = [
+        nbformat.v4.new_output("stream", name="stdout", text="hi\n")
+    ]
+    nb.cells[1].execution_count = 7
+
+    cleared = clear_outputs(nb)
+    assert cleared.cells[1].outputs == []
+    assert cleared.cells[1].execution_count is None
+    # Purity: the original is untouched.
+    assert nb.cells[1].outputs != []
+    assert nb.cells[1].execution_count == 7
+
+
+def test_set_cell_metadata_merges_by_default(sample_notebook):
+    seeded = set_cell_metadata(sample_notebook, 1, {"scrolled": True})
+    merged = set_cell_metadata(seeded, 1, {"tags": ["hide-cell"]})
+    # Merge keeps the previously-set key alongside the new one.
+    assert merged.cells[1].metadata["scrolled"] is True
+    assert merged.cells[1].metadata["tags"] == ["hide-cell"]
+
+
+def test_set_cell_metadata_replace_drops_existing_keys(sample_notebook):
+    seeded = set_cell_metadata(sample_notebook, 1, {"scrolled": True})
+    replaced = set_cell_metadata(seeded, 1, {"tags": ["x"]}, merge=False)
+    assert "scrolled" not in replaced.cells[1].metadata
+    assert replaced.cells[1].metadata["tags"] == ["x"]
+
+
+def test_set_cell_metadata_is_pure(sample_notebook):
+    set_cell_metadata(sample_notebook, 1, {"tags": ["x"]})
+    assert "tags" not in sample_notebook.cells[1].metadata
+
+
 def test_out_of_range_index_raises(sample_notebook):
     with pytest.raises(IndexError):
         remove_cell(sample_notebook, 99)
     with pytest.raises(IndexError):
         add_cell(sample_notebook, CellType.CODE, "z", index=99)
+
+
+# --- execute (optional; skipped without the 'execute' extra) ---------------
+
+
+def test_execute_notebook_populates_outputs():
+    pytest.importorskip("nbclient")
+    from nbtools import execute_notebook
+
+    nb = NotebookBuilder().add_code("x = 2 + 2\nprint(x)").build()
+    executed = execute_notebook(nb)
+    assert "4" in "".join(extract_text_outputs(executed))
+    # Purity: the original notebook gained no outputs.
+    assert nb.cells[0].get("outputs", []) == []
+
+
+def test_execute_notebook_records_errors_when_allowed():
+    pytest.importorskip("nbclient")
+    from nbtools import execute_notebook
+
+    nb = NotebookBuilder().add_code("raise ValueError('boom')").build()
+    executed = execute_notebook(nb, allow_errors=True)
+    errors = extract_errors(executed)
+    assert len(errors) == 1
+    assert errors[0].ename == "ValueError"
 
 
 # --- convert ----------------------------------------------------------------

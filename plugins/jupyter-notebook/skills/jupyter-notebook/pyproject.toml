@@ -1,6 +1,6 @@
 [project]
 name = "nbtools"
-version = "0.1.0"
+version = "0.2.0"
 description = "Read, edit, create, and convert Jupyter notebooks, built on nbformat."
 requires-python = ">=3.12"
 dependencies = [
@@ -10,6 +10,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+execute = ["nbclient>=0.9", "ipykernel>=6"]
 
 [build-system]
 requires = ["hatchling"]

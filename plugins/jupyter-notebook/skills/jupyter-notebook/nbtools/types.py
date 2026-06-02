@@ -47,3 +47,23 @@ class CellSummary:
     source: str
     execution_count: int | None
     output_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class CellError:
+    """A read-only view of one ``error`` output captured by a code cell.
+
+    Returned by :func:`nbtools.inspect.extract_errors`. Lets a caller answer
+    "did any cell raise?" without hand-scanning raw output dicts.
+
+    Attributes:
+        index: Zero-based position of the cell that produced the error.
+        ename: Exception class name, e.g. ``"ValueError"``.
+        evalue: Exception message text.
+        traceback: Raw traceback lines exactly as stored in the output.
+    """
+
+    index: int
+    ename: str
+    evalue: str
+    traceback: list[str]

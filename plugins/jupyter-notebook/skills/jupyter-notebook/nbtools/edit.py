@@ -125,3 +125,66 @@ def update_source(notebook: NotebookNode, index: int, source: str) -> NotebookNo
     _validate_index(result, index, for_insert=False)
     result.cells[index].source = source
     return result
+
+
+def set_cell_metadata(
+    notebook: NotebookNode,
+    index: int,
+    metadata: dict,
+    *,
+    merge: bool = True,
+) -> NotebookNode:
+    """Return a copy with one cell's metadata updated.
+
+    The common use is setting cell *tags* (e.g. ``{"tags": ["remove-input"]}``)
+    that notebook-print pipelines such as nbconvert and Quarto act on.
+
+    Merging is *shallow*: with ``merge=True`` each top-level key in ``metadata``
+    replaces that key on the cell (like ``dict.update``), leaving other existing
+    keys intact. It does not deep-merge nested lists or dicts, so passing
+    ``{"tags": [...]}`` swaps the whole ``tags`` list rather than appending to
+    it. With ``merge=False`` the cell's metadata is replaced wholesale.
+
+    Args:
+        notebook: Source notebook (not modified).
+        index: Index of the cell whose metadata to set.
+        metadata: Metadata keys to apply.
+        merge: If ``True`` (default), update existing metadata key-by-key; if
+            ``False``, replace the cell's metadata entirely.
+
+    Returns:
+        A new notebook with the cell's metadata updated.
+
+    Raises:
+        IndexError: If ``index`` is out of range.
+    """
+    result = copy.deepcopy(notebook)
+    _validate_index(result, index, for_insert=False)
+    cell = result.cells[index]
+    if merge:
+        cell.metadata.update(metadata)
+    else:
+        cell.metadata = copy.deepcopy(metadata)
+    return result
+
+
+def clear_outputs(notebook: NotebookNode) -> NotebookNode:
+    """Return a copy with every code cell's outputs and counts cleared.
+
+    Useful for shipping a notebook without executed outputs: clean diffs, no
+    embedded local paths or timestamps, "ships without outputs" templates. Each
+    code cell's ``outputs`` is emptied and its ``execution_count`` reset to
+    ``None``; markdown and raw cells are untouched.
+
+    Args:
+        notebook: Source notebook (not modified).
+
+    Returns:
+        A new notebook with all code-cell outputs removed.
+    """
+    result = copy.deepcopy(notebook)
+    for cell in result.cells:
+        if cell.cell_type == CellType.CODE:
+            cell["outputs"] = []
+            cell["execution_count"] = None
+    return result

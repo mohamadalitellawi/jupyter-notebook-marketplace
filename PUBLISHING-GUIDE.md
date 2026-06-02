@@ -76,6 +76,11 @@ pip install nbformat markdown
 # (or, if you use uv:  uv pip install nbformat markdown)
 ```
 
+These two libraries are all the skill needs for read/edit/create/convert. The
+skill can optionally *run* notebooks too, which pulls in a Jupyter kernel; those
+heavier dependencies are opt-in and only needed if you want execution:
+`pip install nbtools[execute]`.
+
 ---
 
 ## Part 1 — Put the plugin files in a folder
@@ -101,7 +106,7 @@ jupyter-notebook-marketplace/
                 ├── SKILL.md
                 ├── README.md
                 ├── pyproject.toml
-                ├── nbtools/        (the Python package: 7 .py files)
+                ├── nbtools/        (the Python package: 8 .py files)
                 └── tests/
                     └── test_nbtools.py
 ```
@@ -160,9 +165,10 @@ optional.
 
 ### 2.3 A note on `version`
 
-`plugin.json` has `"version": "1.0.0"`. Remember this rule for later: **every
-time you publish a change, increase this number** (e.g. to `1.0.1`). Claude Code
-only sends updates to users when this number changes.
+`plugin.json` currently has `"version": "1.1.0"`. Remember this rule for later:
+**every time you publish a change, increase this number** (e.g. to `1.1.1` for a
+fix or `1.2.0` for a new feature). Claude Code only sends updates to users when
+this number changes.
 
 ---
 

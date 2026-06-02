@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from nbformat import NotebookNode
 
-from nbtools.types import CellSummary, CellType
+from nbtools.types import CellError, CellSummary, CellType
 
 
 def list_cells(notebook: NotebookNode) -> list[CellSummary]:
@@ -56,7 +56,9 @@ def extract_source(
     ]
 
 
-def extract_text_outputs(notebook: NotebookNode) -> list[str]:
+def extract_text_outputs(
+    notebook: NotebookNode, *, include_errors: bool = False
+) -> list[str]:
     """Collect plain-text outputs from all code cells.
 
     Handles the three text-bearing output kinds in the nbformat schema:
@@ -64,8 +66,15 @@ def extract_text_outputs(notebook: NotebookNode) -> list[str]:
     carry a ``text/plain`` representation). Image and other rich outputs are
     skipped, since this returns text only.
 
+    ``error`` outputs (exception tracebacks) are excluded by default so the
+    return value is unchanged for existing callers. Pass ``include_errors=True``
+    to also collect each error's traceback as a single joined string. To
+    inspect errors structurally instead, use :func:`extract_errors`.
+
     Args:
         notebook: The notebook to read.
+        include_errors: If ``True``, also append the joined traceback text of
+            every ``error`` output. Defaults to ``False`` (errors omitted).
 
     Returns:
         One string per text output found, in notebook order.
@@ -82,4 +91,38 @@ def extract_text_outputs(notebook: NotebookNode) -> list[str]:
                 plain = output.get("data", {}).get("text/plain")
                 if plain is not None:
                     texts.append(plain)
+            elif output_type == "error" and include_errors:
+                texts.append("\n".join(output.get("traceback", [])))
     return texts
+
+
+def extract_errors(notebook: NotebookNode) -> list[CellError]:
+    """Collect every ``error`` output across all code cells.
+
+    An executed cell that raised an exception records an ``error`` output
+    holding the exception name, message, and traceback. This walks those
+    outputs so a caller can detect "did any cell error?" in one line, which is
+    the natural way to verify a notebook ran cleanly.
+
+    Args:
+        notebook: The notebook to read.
+
+    Returns:
+        One :class:`~nbtools.types.CellError` per error output, in notebook
+        order. Empty if no cell errored.
+    """
+    errors: list[CellError] = []
+    for index, cell in enumerate(notebook.cells):
+        if cell.cell_type != CellType.CODE:
+            continue
+        for output in cell.get("outputs", []):
+            if output.get("output_type") == "error":
+                errors.append(
+                    CellError(
+                        index=index,
+                        ename=output.get("ename", ""),
+                        evalue=output.get("evalue", ""),
+                        traceback=list(output.get("traceback", [])),
+                    )
+                )
+    return errors

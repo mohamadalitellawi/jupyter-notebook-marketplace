@@ -4,9 +4,10 @@ Read, inspect, edit, create, and convert Jupyter `.ipynb` files from Python.
 Built on the official [`nbformat`](https://nbformat.readthedocs.io/) library,
 so every notebook is validated against the Jupyter schema on read and write.
 
-**This package does not execute notebooks** — there is no kernel. It
-manipulates the notebook *file structure*. Run notebooks yourself in Jupyter or
-Colab when you want real outputs.
+**By default this package does not execute notebooks** — the core has no kernel
+dependency; it manipulates the notebook *file structure*. In-process execution
+is available **opt-in** via the `execute` extra (see below). Without it, run
+notebooks yourself in Jupyter/Colab or via `jupyter nbconvert`.
 
 ## Install
 
@@ -21,6 +22,13 @@ pip install nbformat markdown
 `markdown` is only used by the HTML converter. The `.py` and `.md` converters
 are pure standard library.
 
+Execution is optional and pulls in a kernel, so it lives behind the `execute`
+extra (`nbclient` + `ipykernel`):
+
+```bash
+uv sync --extra execute      # or: pip install nbtools[execute]
+```
+
 ## Layout
 
 ```
@@ -30,14 +38,15 @@ jupyter-notebook/
 ├── pyproject.toml      # deps, python>=3.12
 ├── nbtools/
 │   ├── __init__.py     # public API re-exports
-│   ├── types.py        # CellType, CellSummary
+│   ├── types.py        # CellType, CellSummary, CellError
 │   ├── io.py           # read_notebook / write_notebook (validated, guarded)
-│   ├── inspect.py      # list_cells, extract_source, extract_text_outputs
-│   ├── edit.py         # add / remove / move / update_source (all pure)
+│   ├── inspect.py      # list_cells, extract_source, extract_text_outputs, extract_errors
+│   ├── edit.py         # add / remove / move / update_source / clear_outputs / set_cell_metadata (all pure)
 │   ├── create.py       # new_notebook, NotebookBuilder
-│   └── convert.py      # to_python/markdown/html + from_python/from_markdown
+│   ├── convert.py      # to_python/markdown/html + from_python/from_markdown
+│   └── execute.py      # execute_notebook (optional, needs the 'execute' extra)
 └── tests/
-    └── test_nbtools.py # pytest suite (round-trips, guard, edits, converters)
+    └── test_nbtools.py # pytest suite (round-trips, guard, edits, converters, errors, execution)
 ```
 
 ## Quick start
@@ -68,8 +77,16 @@ Path("demo.py").write_text(to_python(nb))
 
 ## Design notes
 
-- **Pure edits.** `add_cell`, `remove_cell`, `move_cell`, and `update_source`
-  deep-copy the input and return a new notebook. No hidden mutation.
+- **Pure edits.** `add_cell`, `remove_cell`, `move_cell`, `update_source`,
+  `clear_outputs`, and `set_cell_metadata` deep-copy the input and return a new
+  notebook. No hidden mutation. `execute_notebook` (optional) is pure too.
+- **Verify, don't guess.** `extract_errors(nb)` returns one `CellError` per
+  `error` output, so `assert not extract_errors(nb)` confirms a notebook ran
+  clean. With the `execute` extra, `execute_notebook(nb)` runs it in-process;
+  otherwise use `jupyter nbconvert --execute` then re-read and check.
+- **Ship clean.** `clear_outputs(nb)` strips code-cell outputs and execution
+  counts for tidy diffs; `set_cell_metadata` sets cell tags (e.g.
+  `remove-input`) that nbconvert / Quarto act on.
 - **Destructive writes are explicit.** `write_notebook` raises `FileExistsError`
   on an existing path unless you pass `overwrite=True`.
 - **Lossless round-trips.** For normal content, `from_python(to_python(nb))`
@@ -119,8 +136,9 @@ write_notebook(nb, Path("notes.ipynb"))
 ## Run the tests
 
 ```bash
-pip install pytest        # or: uv sync --extra dev
-pytest                    # 23 tests
+pip install pytest                          # or: uv sync --extra dev
+pytest                                      # 31 tests; 2 execution tests skip
+uv run --extra dev --extra execute pytest   # 33 tests (runs the execution tests too)
 ```
 
 ## Install as a Claude skill

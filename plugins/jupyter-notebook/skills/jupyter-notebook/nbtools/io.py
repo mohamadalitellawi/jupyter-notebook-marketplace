@@ -18,11 +18,12 @@ from nbformat import NotebookNode
 NBFORMAT_VERSION = 4
 
 
-def read_notebook(path: Path) -> NotebookNode:
+def read_notebook(path: str | Path) -> NotebookNode:
     """Read and validate a notebook from disk.
 
     Args:
-        path: Path to an existing ``.ipynb`` file.
+        path: Path to an existing ``.ipynb`` file. Accepts a ``str`` or a
+            ``pathlib.Path``; a string is coerced to ``Path``.
 
     Returns:
         The parsed notebook as an ``nbformat`` ``NotebookNode``.
@@ -31,6 +32,7 @@ def read_notebook(path: Path) -> NotebookNode:
         FileNotFoundError: If ``path`` does not exist.
         nbformat.ValidationError: If the file is not a valid notebook.
     """
+    path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"No notebook at: {path}")
     notebook = nbformat.read(path, as_version=NBFORMAT_VERSION)
@@ -39,7 +41,7 @@ def read_notebook(path: Path) -> NotebookNode:
 
 
 def write_notebook(
-    notebook: NotebookNode, path: Path, *, overwrite: bool = False
+    notebook: NotebookNode, path: str | Path, *, overwrite: bool = False
 ) -> Path:
     """Validate a notebook and write it to disk.
 
@@ -48,7 +50,8 @@ def write_notebook(
 
     Args:
         notebook: The notebook to write.
-        path: Destination ``.ipynb`` path.
+        path: Destination ``.ipynb`` path. Accepts a ``str`` or a
+            ``pathlib.Path``; a string is coerced to ``Path``.
         overwrite: Must be ``True`` to replace an existing file.
 
     Returns:
@@ -58,6 +61,7 @@ def write_notebook(
         FileExistsError: If ``path`` exists and ``overwrite`` is ``False``.
         nbformat.ValidationError: If the notebook is not schema-valid.
     """
+    path = Path(path)
     if path.exists() and not overwrite:
         raise FileExistsError(
             f"Refusing to overwrite existing file without overwrite=True: {path}"

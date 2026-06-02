@@ -61,6 +61,11 @@ environment Claude Code runs in:
 pip install nbformat markdown      # or: uv pip install nbformat markdown
 ```
 
+In-process notebook execution is optional (it pulls in a Jupyter kernel) and
+ships behind an extra — install it only if you want the skill to *run*
+notebooks: `pip install nbtools[execute]` (or `uv sync --extra execute` from the
+skill folder).
+
 ## Validate before sharing
 
 ```bash

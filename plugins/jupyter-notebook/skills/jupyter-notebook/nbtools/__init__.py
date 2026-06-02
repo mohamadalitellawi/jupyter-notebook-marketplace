@@ -14,16 +14,33 @@ from nbtools.convert import (
     to_python,
 )
 from nbtools.create import NotebookBuilder, make_cell, new_notebook
-from nbtools.edit import add_cell, move_cell, remove_cell, update_source
-from nbtools.inspect import extract_source, extract_text_outputs, list_cells
+from nbtools.edit import (
+    add_cell,
+    clear_outputs,
+    move_cell,
+    remove_cell,
+    set_cell_metadata,
+    update_source,
+)
+from nbtools.execute import execute_notebook
+from nbtools.inspect import (
+    extract_errors,
+    extract_source,
+    extract_text_outputs,
+    list_cells,
+)
 from nbtools.io import read_notebook, write_notebook
-from nbtools.types import CellSummary, CellType
+from nbtools.types import CellError, CellSummary, CellType
 
 __all__ = [
+    "CellError",
     "CellSummary",
     "CellType",
     "NotebookBuilder",
     "add_cell",
+    "clear_outputs",
+    "execute_notebook",
+    "extract_errors",
     "extract_source",
     "extract_text_outputs",
     "from_markdown",
@@ -34,6 +51,7 @@ __all__ = [
     "new_notebook",
     "read_notebook",
     "remove_cell",
+    "set_cell_metadata",
     "to_html",
     "to_markdown",
     "to_python",
